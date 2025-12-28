@@ -1,5 +1,6 @@
-import { Controller, Get, Post, Body, UseGuards, Request, Query } from '@nestjs/common';
 
+
+import { Controller, Get, Post, Body, UseGuards, Request, Query, Param } from '@nestjs/common';
 
 interface JwtUserPayload {
   userId: number;
@@ -11,6 +12,25 @@ import { TweetService } from './tweet.service';
 @Controller('tweets')
 export class TweetController {
   constructor(private readonly tweetService: TweetService) {}
+
+  @Get('username/:username')
+  @UseGuards(JwtAuthGuard)
+  findByUsername(
+    @Request() req: { user: JwtUserPayload },
+    @Param('username') username: string,
+  ) {
+    // Busca tweets pelo username
+    console.log(`[TweetController] GET /tweets/username/${username}`);
+    return this.tweetService.findByUsername(username);
+  }
+
+  @Get('latest')
+  @UseGuards(JwtAuthGuard)
+  findLatest(@Request() req: { user: JwtUserPayload }) {
+    // Retorna os últimos tweets de todos os usuários
+    console.log('[TweetController] GET /tweets/latest');
+    return this.tweetService.findLatest();
+  }
 
   @Get()
   @UseGuards(JwtAuthGuard)

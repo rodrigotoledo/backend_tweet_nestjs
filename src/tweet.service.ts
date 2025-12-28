@@ -13,6 +13,33 @@ export class TweetService {
     private userRepository: Repository<User>,
   ) {}
 
+  async findByUsername(username: string) {
+    console.log(`[TweetService] Buscando tweets para username: '${username}'`);
+    const user = await this.userRepository.findOne({ where: { username } });
+    console.log(`[TweetService] Resultado da busca por usuário:`, user);
+    if (!user) {
+      console.warn(`[TweetService] Usuário não encontrado: '${username}'`);
+      return [];
+    }
+    const tweets = await this.tweetRepository.find({
+      where: { user: { id: user.id } },
+      order: { createdAt: 'DESC' },
+      relations: ['user'],
+    });
+    console.log(`[TweetService] ${tweets.length} tweets encontrados para username: '${username}'`);
+    return tweets;
+  }
+
+  async findLatest() {
+    console.log('[TweetService] Buscando últimos tweets de todos os usuários');
+    const tweets = await this.tweetRepository.find({
+      order: { createdAt: 'DESC' },
+      relations: ['user'],
+    });
+    console.log(`[TweetService] ${tweets.length} tweets encontrados (latest)`);
+    return tweets;
+  }
+
   async create(content: string, userPayload: { userId: number }) {
     console.log(
       `[TweetService] Criando tweet para userId: ${userPayload.userId}, content: ${content}`,
