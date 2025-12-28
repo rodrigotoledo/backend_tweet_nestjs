@@ -6,6 +6,7 @@ import { Tweet } from './tweet.entity';
 import { User } from './user.entity';
 import { Comment } from './comment.entity';
 import { Like } from './like.entity';
+import { Retweet } from './retweet.entity';
 import { TweetController } from './tweet.controller';
 import { TweetService } from './tweet.service';
 import { AuthModule } from './auth/auth.module';
@@ -15,10 +16,10 @@ import { AuthModule } from './auth/auth.module';
     TypeOrmModule.forRoot({
       type: 'sqlite',
       database: 'data.sqlite3',
-      entities: [Tweet, User, Comment, Like],
+      entities: [Tweet, User, Comment, Like, Retweet],
       synchronize: true,
     }),
-    TypeOrmModule.forFeature([Tweet, User, Comment, Like]),
+    TypeOrmModule.forFeature([Tweet, User, Comment, Like, Retweet]),
     AuthModule,
   ],
   controllers: [AppController, TweetController],

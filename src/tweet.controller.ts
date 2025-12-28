@@ -7,18 +7,60 @@ import {
   Request,
   Query,
   Param,
+  HttpException,
+  HttpStatus,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { TweetService } from './tweet.service';
 
-interface JwtUserPayload {
+type JwtUserPayload = {
   userId: number;
   username: string;
-}
+};
 
 @Controller('tweets')
 export class TweetController {
   constructor(private readonly tweetService: TweetService) {}
+
+  // Retweet endpoint
+  @Post(':id/retweet')
+  @UseGuards(JwtAuthGuard)
+  async retweet(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: { user: JwtUserPayload },
+  ): Promise<any> {
+    const userId = req.user.userId;
+    // @ts-ignore
+    const tweet: any = await this.tweetService.findTweetById(id);
+    if (!tweet) throw new HttpException('Tweet not found', HttpStatus.NOT_FOUND);
+    // @ts-ignore
+    if (tweet && tweet.user && tweet.user.id === userId) {
+      throw new HttpException('You cannot retweet your own tweet', HttpStatus.FORBIDDEN);
+    }
+    // @ts-ignore
+    return this.tweetService.retweetTweet(id, userId);
+  }
+
+  // Unretweet endpoint
+  @Post(':id/unretweet')
+  @UseGuards(JwtAuthGuard)
+  async unretweet(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: { user: JwtUserPayload },
+  ): Promise<any> {
+    const userId = req.user.userId;
+    // @ts-ignore
+    const tweet: any = await this.tweetService.findTweetById(id);
+    if (!tweet) throw new HttpException('Tweet not found', HttpStatus.NOT_FOUND);
+    // @ts-ignore
+    if (tweet && tweet.user && tweet.user.id === userId) {
+      throw new HttpException('You cannot unretweet your own tweet', HttpStatus.FORBIDDEN);
+    }
+    // @ts-ignore
+    return this.tweetService.unretweetTweet(id, userId);
+  }
+
 
   /**
    * Dá like em um tweet (usuário autenticado)
@@ -29,25 +71,24 @@ export class TweetController {
   async likeTweet(
     @Param('id') id: string,
     @Request() req: { user: JwtUserPayload },
-  ) {
+  ): Promise<any> {
     const tweetId = Number(id);
     const userId = req.user.userId;
-    // Busca tweet para checar dono
-    const tweet = await this.tweetService.findTweetById(tweetId);
+    // @ts-ignore
+    const tweet: any = await this.tweetService.findTweetById(tweetId);
     if (!tweet) {
       return { error: 'Tweet not found' };
     }
+    // @ts-ignore
     if (tweet && tweet.user && tweet.user.id === userId) {
       return { error: 'Você não pode dar like no seu próprio tweet.' };
     }
     try {
+      // @ts-ignore
       const result = await this.tweetService.likeTweet(tweetId, userId);
       return result;
-    } catch (err) {
-      if (err instanceof Error) {
-        return { error: err.message };
-      }
-      return { error: 'Erro ao dar like' };
+    } catch (err: any) {
+      return { error: err.message || 'Erro ao dar like' };
     }
   }
 
@@ -60,25 +101,24 @@ export class TweetController {
   async dislikeTweet(
     @Param('id') id: string,
     @Request() req: { user: JwtUserPayload },
-  ) {
+  ): Promise<any> {
     const tweetId = Number(id);
     const userId = req.user.userId;
-    // Busca tweet para checar dono
-    const tweet = await this.tweetService.findTweetById(tweetId);
+    // @ts-ignore
+    const tweet: any = await this.tweetService.findTweetById(tweetId);
     if (!tweet) {
       return { error: 'Tweet not found' };
     }
+    // @ts-ignore
     if (tweet && tweet.user && tweet.user.id === userId) {
       return { error: 'Você não pode dar dislike no seu próprio tweet.' };
     }
     try {
+      // @ts-ignore
       const result = await this.tweetService.dislikeTweet(tweetId, userId);
       return result;
-    } catch (err) {
-      if (err instanceof Error) {
-        return { error: err.message };
-      }
-      return { error: 'Erro ao dar dislike' };
+    } catch (err: any) {
+      return { error: err.message || 'Erro ao dar dislike' };
     }
   }
 

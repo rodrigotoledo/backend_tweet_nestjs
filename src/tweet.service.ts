@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { Tweet } from './tweet.entity';
 import { User } from './user.entity';
 import { Like } from './like.entity';
+import { Retweet } from './retweet.entity';
 
 @Injectable()
 export class TweetService {
@@ -15,7 +16,37 @@ export class TweetService {
     private userRepository: Repository<User>,
     @InjectRepository(Like)
     private likeRepository: Repository<Like>,
+    @InjectRepository(Retweet)
+    private retweetRepository: Repository<Retweet>,
   ) {}
+
+  // Retweet: usuário logado só pode retweetar 1x por tweet
+  async retweetTweet(tweetId: number, userId: number): Promise<Tweet | null> {
+    const tweet = await this.tweetRepository.findOne({ where: { id: tweetId }, relations: ['retweets', 'user'] });
+    if (!tweet) throw new Error('Tweet not found');
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) throw new Error('User not found');
+    // Verifica se já existe retweet
+    const existing = await this.retweetRepository.findOne({ where: { tweet: { id: tweetId }, user: { id: userId } } });
+    if (existing) return tweet; // já retweetou, retorna tweet
+    const retweet = this.retweetRepository.create({ tweet, user });
+    await this.retweetRepository.save(retweet);
+    // Retorna tweet atualizado
+    return this.tweetRepository.findOne({ where: { id: tweetId }, relations: ['retweets', 'user'] });
+  }
+
+  // Unretweet: remove o retweet do usuário logado
+  async unretweetTweet(tweetId: number, userId: number): Promise<Tweet | null> {
+    const tweet = await this.tweetRepository.findOne({ where: { id: tweetId }, relations: ['retweets', 'user'] });
+    if (!tweet) throw new Error('Tweet not found');
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) throw new Error('User not found');
+    // Remove retweet se existir
+    const existing = await this.retweetRepository.findOne({ where: { tweet: { id: tweetId }, user: { id: userId } } });
+    if (existing) await this.retweetRepository.remove(existing);
+    // Retorna tweet atualizado
+    return this.tweetRepository.findOne({ where: { id: tweetId }, relations: ['retweets', 'user'] });
+  }
 
   // Busca tweet por id (com user)
   async findTweetById(tweetId: number): Promise<Tweet | null> {
