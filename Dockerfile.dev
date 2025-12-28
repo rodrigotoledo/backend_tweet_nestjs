@@ -1,0 +1,34 @@
+# Development stage
+FROM node:18-alpine
+
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
+
+# Create app user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nestjs -u 1001
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies (including dev dependencies)
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Install NestJS CLI globally
+RUN npm install -g @nestjs/cli
+
+# Change ownership
+RUN chown -R nestjs:nodejs /app
+USER nestjs
+
+# Expose port
+EXPOSE 3000
+
+# Start development server
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["npm", "run", "start:dev"]

@@ -15,10 +15,19 @@ import { AuthModule } from './auth/auth.module';
 @Module({
   imports: [
     TypeOrmModule.forRoot({
-      type: 'sqlite',
-      database: 'data.sqlite3',
+      type: 'postgres',
+      host: process.env.DATABASE_HOST || 'localhost',
+      port: parseInt(process.env.DATABASE_PORT || '5432'),
+      username: process.env.DATABASE_USERNAME || 'tweet_user',
+      password: process.env.DATABASE_PASSWORD || 'tweet_password',
+      database: process.env.DATABASE_NAME || 'tweet_app',
       entities: [Tweet, User, Comment, Like, Dislike, Retweet],
-      synchronize: true,
+      synchronize: process.env.NODE_ENV === 'development' && !process.env.USE_MIGRATIONS,
+      migrations: ['dist/migrations/*.js'],
+      migrationsRun:
+        process.env.NODE_ENV === 'production' ||
+        process.env.USE_MIGRATIONS === 'true',
+      logging: process.env.NODE_ENV === 'development',
     }),
     TypeOrmModule.forFeature([Tweet, User, Comment, Like, Dislike, Retweet]),
     AuthModule,
