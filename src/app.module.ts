@@ -14,7 +14,7 @@ import { AuthModule } from './auth/auth.module';
   imports: [
     TypeOrmModule.forRoot({
       type: 'sqlite',
-      database: 'data.sqlite',
+      database: 'data.sqlite3',
       entities: [Tweet, User, Comment, Like],
       synchronize: true,
     }),

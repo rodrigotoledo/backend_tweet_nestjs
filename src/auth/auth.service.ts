@@ -15,7 +15,7 @@ export class AuthService {
 
   async validateUser(username: string, pass: string): Promise<any> {
     const user = await this.userRepository.findOne({ where: { username } });
-    if (user && await bcrypt.compare(pass, user.password)) {
+    if (user && (await bcrypt.compare(pass, user.password))) {
       const { password, ...result } = user;
       return result;
     }
@@ -29,9 +29,27 @@ export class AuthService {
     };
   }
 
-  async register(username: string, email: string, password: string) {
+  async register(
+    name: string,
+    username: string,
+    email: string,
+    password: string,
+    password_confirmation: string,
+  ) {
+    if (password !== password_confirmation) {
+      throw new Error('Passwords do not match');
+    }
     const hash = await bcrypt.hash(password, 10);
-    const user = this.userRepository.create({ username, email, password: hash });
-    return this.userRepository.save(user);
+    const user = this.userRepository.create({
+      name,
+      username,
+      email,
+      password: hash,
+    });
+    await this.userRepository.save(user);
+    const payload = { username: user.username, sub: user.id };
+    return {
+      access_token: this.jwtService.sign(payload),
+    };
   }
 }
