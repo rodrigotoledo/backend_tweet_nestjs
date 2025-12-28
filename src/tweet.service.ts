@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 
 import { Tweet } from './tweet.entity';
 import { User } from './user.entity';
+import { Comment } from './comment.entity';
 import { Like } from './like.entity';
 import { Dislike } from './dislike.entity';
 import { Retweet } from './retweet.entity';
@@ -15,6 +16,8 @@ export class TweetService {
     private tweetRepository: Repository<Tweet>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(Comment)
+    private commentRepository: Repository<Comment>,
     @InjectRepository(Like)
     private likeRepository: Repository<Like>,
     @InjectRepository(Dislike)
@@ -72,12 +75,64 @@ export class TweetService {
   }
 
   // Busca tweet por id (com user)
-  async findTweetById(tweetId: number): Promise<Tweet | null> {
-    return this.tweetRepository.findOne({
+  async findTweetById(tweetId: number) {
+    const tweet = await this.tweetRepository.findOne({
+      where: { id: tweetId },
+      relations: [
+        'user',
+        'likes',
+        'dislikes',
+        'retweets',
+        'comments',
+        'comments.user',
+      ],
+    });
+    if (!tweet) return null;
+    return {
+      id: tweet.id,
+      content: tweet.content,
+      creatorId: tweet.user?.id || 0,
+      creatorUsername: tweet.user?.username || 'unknown',
+      likes: tweet.likes?.length || 0,
+      dislikes: tweet.dislikes?.length || 0,
+      retweets: tweet.retweets?.length || 0,
+      comments:
+        tweet.comments
+          ?.filter((comment) => comment.user)
+          .map((comment) => ({
+            id: comment.id,
+            content: comment.content,
+            creatorId: comment.user.id,
+            creatorUsername: comment.user.username,
+            createdAt: comment.createdAt,
+          })) || [],
+      createdAt: tweet.createdAt,
+    };
+  }
+
+  // Comment: usuário logado só pode comentar tweets que não são seus
+  async commentTweet(
+    tweetId: number,
+    userId: number,
+    content: string,
+  ): Promise<Comment> {
+    const tweet = await this.tweetRepository.findOne({
       where: { id: tweetId },
       relations: ['user'],
     });
+    if (!tweet) throw new Error('Tweet not found');
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) throw new Error('User not found');
+
+    // Impede comentário no próprio tweet
+    if (tweet.user.id === userId) {
+      throw new Error('Você não pode comentar seu próprio tweet.');
+    }
+
+    const comment = this.commentRepository.create({ tweet, user, content });
+    return this.commentRepository.save(comment);
   }
+
   // Like: usuário logado só pode dar like 1x por tweet
   async likeTweet(tweetId: number, userId: number): Promise<Tweet | null> {
     const tweet = await this.tweetRepository.findOne({
@@ -125,61 +180,132 @@ export class TweetService {
   }
 
   async findByUsername(username: string) {
-    console.log(`[TweetService] Buscando tweets para username: '${username}'`);
     const user = await this.userRepository.findOne({ where: { username } });
-    console.log(`[TweetService] Resultado da busca por usuário:`, user);
     if (!user) {
-      console.warn(`[TweetService] Usuário não encontrado: '${username}'`);
       return [];
     }
     const tweets = await this.tweetRepository.find({
       where: { user: { id: user.id } },
       order: { createdAt: 'DESC' },
-      relations: ['user', 'likes', 'dislikes', 'retweets'],
+      relations: [
+        'user',
+        'likes',
+        'dislikes',
+        'retweets',
+        'comments',
+        'comments.user',
+      ],
     });
-    console.log(`[TweetService] ${tweets.length} tweets encontrados para username: '${username}'`);
-    return tweets;
+    return tweets.map((tweet) => ({
+      id: tweet.id,
+      content: tweet.content,
+      creatorId: tweet.user?.id || 0,
+      creatorUsername: tweet.user?.username || 'unknown',
+      likes: tweet.likes?.length || 0,
+      dislikes: tweet.dislikes?.length || 0,
+      retweets: tweet.retweets?.length || 0,
+      comments:
+        tweet.comments
+          ?.filter((comment) => comment.user)
+          .map((comment) => ({
+            id: comment.id,
+            content: comment.content,
+            creatorId: comment.user.id,
+            creatorUsername: comment.user.username,
+            createdAt: comment.createdAt,
+          })) || [],
+      createdAt: tweet.createdAt,
+    }));
   }
 
   async findLatest() {
-    console.log('[TweetService] Buscando últimos tweets de todos os usuários');
     const tweets = await this.tweetRepository.find({
       order: { createdAt: 'DESC' },
-      relations: ['user', 'likes', 'dislikes', 'retweets'],
+      relations: [
+        'user',
+        'likes',
+        'dislikes',
+        'retweets',
+        'comments',
+        'comments.user',
+      ],
     });
-    console.log(`[TweetService] ${tweets.length} tweets encontrados (latest)`);
-    return tweets;
+    return tweets.map((tweet) => ({
+      id: tweet.id,
+      content: tweet.content,
+      creatorId: tweet.user?.id || 0,
+      creatorUsername: tweet.user?.username || 'unknown',
+      likes: tweet.likes?.length || 0,
+      dislikes: tweet.dislikes?.length || 0,
+      retweets: tweet.retweets?.length || 0,
+      comments:
+        tweet.comments
+          ?.filter((comment) => comment.user)
+          .map((comment) => ({
+            id: comment.id,
+            content: comment.content,
+            creatorId: comment.user.id,
+            creatorUsername: comment.user.username,
+            createdAt: comment.createdAt,
+          })) || [],
+      createdAt: tweet.createdAt,
+    }));
   }
 
   async create(content: string, userPayload: { userId: number }) {
-    console.log(
-      `[TweetService] Criando tweet para userId: ${userPayload.userId}, content: ${content}`,
-    );
     const user = await this.userRepository.findOne({
       where: { id: userPayload.userId },
     });
     if (!user) {
-      console.error(
-        `[TweetService] Usuário não encontrado: ${userPayload.userId}`,
-      );
       throw new Error('User not found');
     }
     const tweet = this.tweetRepository.create({ content, user });
     const saved = await this.tweetRepository.save(tweet);
-    console.log(`[TweetService] Tweet criado com id: ${saved.id}`);
-    return saved;
+    return {
+      id: saved.id,
+      content: saved.content,
+      creatorId: user.id,
+      creatorUsername: user.username,
+      likes: 0,
+      dislikes: 0,
+      retweets: 0,
+      comments: [],
+      createdAt: saved.createdAt,
+    };
   }
 
   async findAll(userId: number) {
-    console.log(`[TweetService] Buscando tweets para userId: ${userId}`);
     const tweets = await this.tweetRepository.find({
       where: { user: { id: userId } },
       order: { createdAt: 'DESC' },
-      relations: ['user', 'likes'],
+      relations: [
+        'user',
+        'likes',
+        'dislikes',
+        'retweets',
+        'comments',
+        'comments.user',
+      ],
     });
-    console.log(
-      `[TweetService] ${tweets.length} tweets encontrados para userId: ${userId}`,
-    );
-    return tweets;
+    return tweets
+      .filter((tweet) => tweet.user)
+      .map((tweet) => ({
+        id: tweet.id,
+        content: tweet.content,
+        creatorId: tweet.user.id,
+        creatorUsername: tweet.user.username,
+        likes: tweet.likes?.length || 0,
+        dislikes: tweet.dislikes?.length || 0,
+        retweets: tweet.retweets?.length || 0,
+        comments:
+          tweet.comments?.map((comment) => ({
+            id: comment.id,
+            content: comment.content,
+            creatorId: comment.user.id,
+            creatorUsername: comment.user.username,
+            createdAt: comment.createdAt,
+          })) || [],
+        createdAt: tweet.createdAt,
+      }));
   }
 }

@@ -1,4 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, CreateDateColumn, ManyToOne } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  ManyToOne,
+} from 'typeorm';
 import { User } from './user.entity';
 import { Tweet } from './tweet.entity';
 
@@ -7,10 +12,10 @@ export class Like {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => User, user => user.likes, { eager: true })
+  @ManyToOne(() => User, (user) => user.likes, { eager: true })
   user: User;
 
-  @ManyToOne(() => Tweet, tweet => tweet.likes, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Tweet, (tweet) => tweet.likes, { onDelete: 'CASCADE' })
   tweet: Tweet;
 
   @CreateDateColumn()

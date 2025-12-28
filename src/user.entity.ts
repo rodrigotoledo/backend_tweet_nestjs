@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  OneToMany,
+} from 'typeorm';
 import { Tweet } from './tweet.entity';
 import { Comment } from './comment.entity';
 import { Like } from './like.entity';
@@ -25,10 +31,10 @@ export class User {
   @CreateDateColumn()
   createdAt: Date;
 
-  @OneToMany(() => Tweet, tweet => tweet.user)
+  @OneToMany(() => Tweet, (tweet) => tweet.user)
   tweets: Tweet[];
 
-  @OneToMany(() => Comment, comment => comment.user)
+  @OneToMany(() => Comment, (comment) => comment.user)
   comments: Comment[];
 
   @OneToMany(() => Like, (like) => like.user)

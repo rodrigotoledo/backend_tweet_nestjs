@@ -8,7 +8,10 @@ export class AuthController {
 
   @Post('login')
   async login(@Body() body: { username: string; password: string }) {
-    const user = await this.authService.validateUser(body.username, body.password);
+    const user = await this.authService.validateUser(
+      body.username,
+      body.password,
+    );
     if (!user) {
       return { error: 'Invalid credentials' };
     }
@@ -16,8 +19,23 @@ export class AuthController {
   }
 
   @Post('register')
-  async register(@Body() body: { name: string; username: string; email: string; password: string; password_confirmation: string }) {
-    return this.authService.register(body.name, body.username, body.email, body.password, body.password_confirmation);
+  async register(
+    @Body()
+    body: {
+      name: string;
+      username: string;
+      email: string;
+      password: string;
+      password_confirmation: string;
+    },
+  ) {
+    return this.authService.register(
+      body.name,
+      body.username,
+      body.email,
+      body.password,
+      body.password_confirmation,
+    );
   }
 
   @Post('profile')

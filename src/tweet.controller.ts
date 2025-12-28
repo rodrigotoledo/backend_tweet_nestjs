@@ -33,10 +33,14 @@ export class TweetController {
     const userId = req.user.userId;
     // @ts-ignore
     const tweet: any = await this.tweetService.findTweetById(id);
-    if (!tweet) throw new HttpException('Tweet not found', HttpStatus.NOT_FOUND);
+    if (!tweet)
+      throw new HttpException('Tweet not found', HttpStatus.NOT_FOUND);
     // @ts-ignore
     if (tweet && tweet.user && tweet.user.id === userId) {
-      throw new HttpException('You cannot retweet your own tweet', HttpStatus.FORBIDDEN);
+      throw new HttpException(
+        'You cannot retweet your own tweet',
+        HttpStatus.FORBIDDEN,
+      );
     }
     // @ts-ignore
     return this.tweetService.retweetTweet(id, userId);
@@ -52,15 +56,48 @@ export class TweetController {
     const userId = req.user.userId;
     // @ts-ignore
     const tweet: any = await this.tweetService.findTweetById(id);
-    if (!tweet) throw new HttpException('Tweet not found', HttpStatus.NOT_FOUND);
+    if (!tweet)
+      throw new HttpException('Tweet not found', HttpStatus.NOT_FOUND);
     // @ts-ignore
     if (tweet && tweet.user && tweet.user.id === userId) {
-      throw new HttpException('You cannot unretweet your own tweet', HttpStatus.FORBIDDEN);
+      throw new HttpException(
+        'You cannot unretweet your own tweet',
+        HttpStatus.FORBIDDEN,
+      );
     }
     // @ts-ignore
     return this.tweetService.unretweetTweet(id, userId);
   }
 
+  // Comment endpoint
+  @Post(':id/comment')
+  @UseGuards(JwtAuthGuard)
+  async comment(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('content') content: string,
+    @Request() req: { user: JwtUserPayload },
+  ): Promise<any> {
+    if (!content || content.trim().length === 0) {
+      throw new HttpException(
+        'Comment content is required',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const userId = req.user.userId;
+    // @ts-ignore
+    const tweet: any = await this.tweetService.findTweetById(id);
+    if (!tweet)
+      throw new HttpException('Tweet not found', HttpStatus.NOT_FOUND);
+    // @ts-ignore
+    if (tweet && tweet.user && tweet.user.id === userId) {
+      throw new HttpException(
+        'You cannot comment on your own tweet',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+    // @ts-ignore
+    return this.tweetService.commentTweet(id, userId, content.trim());
+  }
 
   /**
    * Dá like em um tweet (usuário autenticado)
@@ -129,7 +166,6 @@ export class TweetController {
     @Param('username') username: string,
   ) {
     // Busca tweets pelo username
-    console.log(`[TweetController] GET /tweets/username/${username}`);
     return this.tweetService.findByUsername(username);
   }
 
@@ -137,7 +173,6 @@ export class TweetController {
   @UseGuards(JwtAuthGuard)
   findLatest() {
     // Retorna os últimos tweets de todos os usuários
-    console.log('[TweetController] GET /tweets/latest');
     return this.tweetService.findLatest();
   }
 
@@ -149,7 +184,6 @@ export class TweetController {
   ) {
     // Se userId for passado, retorna os tweets desse usuário, senão do logado
     const id = userId ? Number(userId) : req.user.userId;
-    console.log(`[TweetController] GET /tweets - userId: ${id}`);
     return this.tweetService.findAll(id);
   }
 
@@ -159,7 +193,6 @@ export class TweetController {
     @Body('content') content: string,
     @Request() req: { user: JwtUserPayload },
   ) {
-    console.log(`[TweetController] POST /tweets - userId: ${req.user.userId}, content: ${content}`);
     return this.tweetService.create(content, req.user);
   }
 }
