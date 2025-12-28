@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { Tweet } from './tweet.entity';
 import { User } from './user.entity';
 import { Like } from './like.entity';
+import { Dislike } from './dislike.entity';
 import { Retweet } from './retweet.entity';
 
 @Injectable()
@@ -16,68 +17,111 @@ export class TweetService {
     private userRepository: Repository<User>,
     @InjectRepository(Like)
     private likeRepository: Repository<Like>,
+    @InjectRepository(Dislike)
+    private dislikeRepository: Repository<Dislike>,
     @InjectRepository(Retweet)
     private retweetRepository: Repository<Retweet>,
   ) {}
 
   // Retweet: usuário logado só pode retweetar 1x por tweet
   async retweetTweet(tweetId: number, userId: number): Promise<Tweet | null> {
-    const tweet = await this.tweetRepository.findOne({ where: { id: tweetId }, relations: ['retweets', 'user'] });
+    const tweet = await this.tweetRepository.findOne({
+      where: { id: tweetId },
+      relations: ['retweets', 'user'],
+    });
     if (!tweet) throw new Error('Tweet not found');
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new Error('User not found');
+    // Impede retweet do próprio tweet
+    if (tweet.user.id === userId) {
+      throw new Error('Você não pode retweetar seu próprio tweet.');
+    }
     // Verifica se já existe retweet
-    const existing = await this.retweetRepository.findOne({ where: { tweet: { id: tweetId }, user: { id: userId } } });
+    const existing = await this.retweetRepository.findOne({
+      where: { tweet: { id: tweetId }, user: { id: userId } },
+    });
     if (existing) return tweet; // já retweetou, retorna tweet
     const retweet = this.retweetRepository.create({ tweet, user });
     await this.retweetRepository.save(retweet);
     // Retorna tweet atualizado
-    return this.tweetRepository.findOne({ where: { id: tweetId }, relations: ['retweets', 'user'] });
+    return this.tweetRepository.findOne({
+      where: { id: tweetId },
+      relations: ['retweets', 'user'],
+    });
   }
 
   // Unretweet: remove o retweet do usuário logado
   async unretweetTweet(tweetId: number, userId: number): Promise<Tweet | null> {
-    const tweet = await this.tweetRepository.findOne({ where: { id: tweetId }, relations: ['retweets', 'user'] });
+    const tweet = await this.tweetRepository.findOne({
+      where: { id: tweetId },
+      relations: ['retweets', 'user'],
+    });
     if (!tweet) throw new Error('Tweet not found');
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new Error('User not found');
     // Remove retweet se existir
-    const existing = await this.retweetRepository.findOne({ where: { tweet: { id: tweetId }, user: { id: userId } } });
+    const existing = await this.retweetRepository.findOne({
+      where: { tweet: { id: tweetId }, user: { id: userId } },
+    });
     if (existing) await this.retweetRepository.remove(existing);
     // Retorna tweet atualizado
-    return this.tweetRepository.findOne({ where: { id: tweetId }, relations: ['retweets', 'user'] });
+    return this.tweetRepository.findOne({
+      where: { id: tweetId },
+      relations: ['retweets', 'user'],
+    });
   }
 
   // Busca tweet por id (com user)
   async findTweetById(tweetId: number): Promise<Tweet | null> {
-    return this.tweetRepository.findOne({ where: { id: tweetId }, relations: ['user'] });
+    return this.tweetRepository.findOne({
+      where: { id: tweetId },
+      relations: ['user'],
+    });
   }
   // Like: usuário logado só pode dar like 1x por tweet
   async likeTweet(tweetId: number, userId: number): Promise<Tweet | null> {
-    const tweet = await this.tweetRepository.findOne({ where: { id: tweetId }, relations: ['likes', 'user'] });
+    const tweet = await this.tweetRepository.findOne({
+      where: { id: tweetId },
+      relations: ['likes', 'user'],
+    });
     if (!tweet) throw new Error('Tweet not found');
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new Error('User not found');
     // Verifica se já existe like
-    const existing = await this.likeRepository.findOne({ where: { tweet: { id: tweetId }, user: { id: userId } } });
+    const existing = await this.likeRepository.findOne({
+      where: { tweet: { id: tweetId }, user: { id: userId } },
+    });
     if (existing) return tweet; // já curtiu, retorna tweet
     const like = this.likeRepository.create({ tweet, user });
     await this.likeRepository.save(like);
     // Retorna tweet atualizado
-    return this.tweetRepository.findOne({ where: { id: tweetId }, relations: ['likes', 'user'] });
+    return this.tweetRepository.findOne({
+      where: { id: tweetId },
+      relations: ['likes', 'user'],
+    });
   }
 
-  // Dislike: remove o like do usuário logado
+  // Dislike: usuário logado só pode dar dislike 1x por tweet
   async dislikeTweet(tweetId: number, userId: number): Promise<Tweet | null> {
-    const tweet = await this.tweetRepository.findOne({ where: { id: tweetId }, relations: ['likes', 'user'] });
+    const tweet = await this.tweetRepository.findOne({
+      where: { id: tweetId },
+      relations: ['dislikes', 'user'],
+    });
     if (!tweet) throw new Error('Tweet not found');
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new Error('User not found');
-    // Remove like se existir
-    const existing = await this.likeRepository.findOne({ where: { tweet: { id: tweetId }, user: { id: userId } } });
-    if (existing) await this.likeRepository.remove(existing);
+    // Verifica se já existe dislike
+    const existing = await this.dislikeRepository.findOne({
+      where: { tweet: { id: tweetId }, user: { id: userId } },
+    });
+    if (existing) return tweet; // já deu dislike, retorna tweet
+    const dislike = this.dislikeRepository.create({ tweet, user });
+    await this.dislikeRepository.save(dislike);
     // Retorna tweet atualizado
-    return this.tweetRepository.findOne({ where: { id: tweetId }, relations: ['likes', 'user'] });
+    return this.tweetRepository.findOne({
+      where: { id: tweetId },
+      relations: ['dislikes', 'user'],
+    });
   }
 
   async findByUsername(username: string) {
@@ -91,7 +135,7 @@ export class TweetService {
     const tweets = await this.tweetRepository.find({
       where: { user: { id: user.id } },
       order: { createdAt: 'DESC' },
-      relations: ['user', 'likes'],
+      relations: ['user', 'likes', 'dislikes', 'retweets'],
     });
     console.log(`[TweetService] ${tweets.length} tweets encontrados para username: '${username}'`);
     return tweets;
@@ -101,7 +145,7 @@ export class TweetService {
     console.log('[TweetService] Buscando últimos tweets de todos os usuários');
     const tweets = await this.tweetRepository.find({
       order: { createdAt: 'DESC' },
-      relations: ['user', 'likes'],
+      relations: ['user', 'likes', 'dislikes', 'retweets'],
     });
     console.log(`[TweetService] ${tweets.length} tweets encontrados (latest)`);
     return tweets;

@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany } f
 import { Tweet } from './tweet.entity';
 import { Comment } from './comment.entity';
 import { Like } from './like.entity';
+import { Dislike } from './dislike.entity';
 import { Retweet } from './retweet.entity';
 
 @Entity()
@@ -30,9 +31,12 @@ export class User {
   @OneToMany(() => Comment, comment => comment.user)
   comments: Comment[];
 
-  @OneToMany(() => Like, like => like.user)
+  @OneToMany(() => Like, (like) => like.user)
   likes: Like[];
 
-  @OneToMany(() => Retweet, retweet => retweet.user)
+  @OneToMany(() => Dislike, (dislike) => dislike.user)
+  dislikes: Dislike[];
+
+  @OneToMany(() => Retweet, (retweet) => retweet.user)
   retweets: Retweet[];
 }
